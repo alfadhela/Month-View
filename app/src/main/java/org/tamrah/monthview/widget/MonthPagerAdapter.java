@@ -8,12 +8,14 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.GridView;
+import android.widget.LinearLayout;
 import android.widget.ListAdapter;
 import android.widget.TextView;
 
 import org.tamrah.monthview.R;
 import org.tamrah.monthview.widget.utils.MonthDisplayHelper;
 
+import java.text.DateFormatSymbols;
 import java.util.Calendar;
 
 /**
@@ -23,28 +25,33 @@ public class MonthPagerAdapter extends PagerAdapter {
     private Context mContext;
     private Calendar mCalendar;
     private Calendar sCalendar;
+
+    private Calendar today;
+
+    private MonthGrid monthGrid;
+
     public MonthPagerAdapter(Context context, Calendar mCalendar, Calendar sCalendar){
         this.mContext = context;
         this.mCalendar = mCalendar;
         this.sCalendar = sCalendar;
+        setCalendars();
+    }
+
+    private void setCalendars(){
+        mCalendar = mCalendar.getInstance();
+        if(sCalendar!=null)
+            sCalendar = sCalendar.getInstance();
+        today = sCalendar.getInstance();
     }
 
     @Override
     public Object instantiateItem(ViewGroup collection, int position) {
-        mCalendar = Calendar.getInstance();
         mCalendar.add(Calendar.MONTH, getCount()<100?-(position+100):(position-100));
-        /*MonthGrid mg = new MonthGrid(mContext, mCalendar, sCalendar);
-        collection.addView(mg);
-        return mg;*/
-        LayoutInflater inflater = LayoutInflater.from(mContext);
-        ViewGroup layout = (ViewGroup) inflater.inflate(R.layout.view_month, collection, false);
+
+        monthGrid = new MonthGrid(mContext);
         final MonthDisplayHelper mainHelper = new MonthDisplayHelper(mCalendar.get(Calendar.YEAR), mCalendar.get(Calendar.MONTH), mCalendar);
-        GridView wGrid = (GridView)layout.findViewById(R.id.weekGV);
-        wGrid.setNumColumns(7);
-        wGrid.setAdapter(weekDays);
-        final GridView mGrid = (GridView)layout.findViewById(R.id.monthGV);
-        mGrid.setNumColumns(7);
-        mGrid.setAdapter(new ListAdapter() {
+        monthGrid.getWeekGrid().setAdapter(weekDays);
+        monthGrid.getDaysGrid().setAdapter(new ListAdapter() {
             final int IN_MONTH = 1;
             final int OTHER_MONTH = -1;
             @Override
@@ -58,14 +65,10 @@ public class MonthPagerAdapter extends PagerAdapter {
             }
 
             @Override
-            public void registerDataSetObserver(DataSetObserver observer) {
-
-            }
+            public void registerDataSetObserver(DataSetObserver observer) {}
 
             @Override
-            public void unregisterDataSetObserver(DataSetObserver observer) {
-
-            }
+            public void unregisterDataSetObserver(DataSetObserver observer) { }
 
             @Override
             public int getCount() {
@@ -80,7 +83,7 @@ public class MonthPagerAdapter extends PagerAdapter {
 
             @Override
             public long getItemId(int position) {
-                return 0;
+                return position;
             }
 
             @Override
@@ -94,14 +97,16 @@ public class MonthPagerAdapter extends PagerAdapter {
                     convertView = LayoutInflater.from(mContext).inflate(R.layout.view_date, null);
                 ((TextView)convertView.findViewById(R.id.textView)).setText(mainHelper.getDayAt(position)+"");
 
-                int gHeight = mGrid.getMeasuredHeight();
+                int gHeight = monthGrid.getDaysGrid().getMeasuredHeight();//daysGrid.getMeasuredHeight();
                 int cHeight = gHeight / 6;
-                int gWidth = mGrid.getMeasuredWidth();
+                int gWidth = monthGrid.getDaysGrid().getMeasuredWidth();//daysGrid.getMeasuredWidth();
                 int cWidth = gWidth / 7;
                 AbsListView.LayoutParams layoutParams = new AbsListView.LayoutParams(cWidth, cHeight);
                 convertView.setLayoutParams(layoutParams);
 
-                if(mainHelper.getDayAt(position) == Calendar.getInstance().get(Calendar.DATE)  &&
+                if(mainHelper.getDayAt(position) == today.getInstance().get(Calendar.DATE)  &&
+                        mCalendar.get(Calendar.MONTH) == today.getInstance().get(Calendar.MONTH) &&
+                        mCalendar.get(Calendar.YEAR) == today.getInstance().get(Calendar.YEAR) &&
                         mainHelper.isWithinCurrentMonth(position))
                     convertView.setBackgroundColor(mContext.getResources().getColor(R.color.colorAccent));
 
@@ -124,8 +129,8 @@ public class MonthPagerAdapter extends PagerAdapter {
             }
         });
 
-        collection.addView(layout);
-        return layout;
+        collection.addView(monthGrid);
+        return monthGrid;
     }
 
     @Override
@@ -193,13 +198,13 @@ public class MonthPagerAdapter extends PagerAdapter {
         public View getView(int position, View convertView, ViewGroup parent) {
             if(convertView == null)
                 convertView = new TextView(mContext);
-            ((TextView)convertView).setText(position + "");
+            ((TextView)convertView).setText(DateFormatSymbols.getInstance().getShortWeekdays()[position+1]);
             ((TextView)convertView).setTextAppearance(mContext, android.R.style.TextAppearance_Medium);
             ((TextView)convertView).setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
 
-            int gHeight = mGrid.getMeasuredHeight();
-            int cHeight = gHeight / 6;
-            int gWidth = mGrid.getMeasuredWidth();
+            int gHeight = monthGrid.getWeekGrid().getMeasuredHeight();//weekGrid.getMeasuredHeight();
+            int cHeight = gHeight;
+            int gWidth = monthGrid.getWeekGrid().getMeasuredWidth();//weekGrid.getMeasuredWidth();
             int cWidth = gWidth / 7;
             AbsListView.LayoutParams layoutParams = new AbsListView.LayoutParams(cWidth, cHeight);
             convertView.setLayoutParams(layoutParams);
@@ -222,4 +227,53 @@ public class MonthPagerAdapter extends PagerAdapter {
             return false;
         }
     };
+    class MonthGrid extends LinearLayout{
+        private GridView weekGrid;
+        private GridView daysGrid;
+        public MonthGrid(Context context){
+            super(context);
+
+            fromCode(context);
+
+            weekGrid.setNumColumns(7);
+            daysGrid.setNumColumns(7);
+        }
+
+        private void fromCode(Context context){
+            setOrientation(VERTICAL);
+            setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            weekGrid = new GridView(context);
+            addView(weekGrid, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(20)));
+            daysGrid = new GridView(context);
+            addView(daysGrid, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        }
+
+        public GridView getDaysGrid() {
+            return daysGrid;
+        }
+
+        public GridView getWeekGrid() {
+            return weekGrid;
+        }
+    }
+
+    // Convert DP to PX
+    // Source: http://stackoverflow.com/a/8490361
+    private int dpToPx(int dps) {
+        final float scale = mContext.getResources().getDisplayMetrics().density;
+        int pixels = (int) (dps * scale + 0.5f);
+        return pixels;
+    }
+
+    public void setMainCalendar(Calendar mCalendar) {
+        this.mCalendar = mCalendar;
+        setCalendars();
+        notifyDataSetChanged();
+    }
+
+    public void setSecondCalendar(Calendar sCalendar) {
+        this.sCalendar = sCalendar;
+        setCalendars();
+        notifyDataSetChanged();
+    }
 }
