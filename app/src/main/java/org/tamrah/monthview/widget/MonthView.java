@@ -44,7 +44,7 @@ public class MonthView extends ViewGroup {
             }
         });
 
-        pager.setCurrentItem(adapter.getCount()/2, false);
+        pager.setCurrentItem(adapter.getCenterPosition(), false);
 
     }
 
