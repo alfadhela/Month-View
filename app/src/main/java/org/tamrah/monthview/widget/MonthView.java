@@ -8,6 +8,8 @@ import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import org.tamrah.islamic.hijri.HijraCalendar;
+import org.tamrah.islamic.hijri.IslamicCalendar;
 import org.tamrah.monthview.widget.utils.CalendarTypes;
 
 import java.util.Calendar;
@@ -18,7 +20,7 @@ import java.util.Calendar;
 public class MonthView extends ViewGroup {
 
     private CalendarTypes mainCalendar = CalendarTypes.Gergorian;
-    private CalendarTypes secondCalendar = null;
+    private CalendarTypes secondCalendar = CalendarTypes.Hijra;
 
     private final ViewPager pager;
 
@@ -34,7 +36,7 @@ public class MonthView extends ViewGroup {
         pager = new ViewPager(getContext());
         addView(pager, new MarginLayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
-        adapter = new MonthPagerAdapter(getContext(), Calendar.getInstance(), null);
+        adapter = new MonthPagerAdapter(getContext(), HijraCalendar.getInstance(), Calendar.getInstance());
         pager.setAdapter(adapter);
         pager.setPageTransformer(false, new ViewPager.PageTransformer() {
             @Override

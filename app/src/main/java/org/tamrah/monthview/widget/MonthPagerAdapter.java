@@ -14,6 +14,7 @@ import android.widget.ListAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.tamrah.islamic.hijri.*;
 import org.tamrah.monthview.R;
 import org.tamrah.monthview.widget.utils.MonthDisplayHelper;
 
@@ -40,15 +41,35 @@ public class MonthPagerAdapter extends PagerAdapter {
     }
 
     private void setCalendars(){
-        mCalendar = mCalendar.getInstance();
+        mCalendar = getInstance(mCalendar);
         if(sCalendar!=null)
-            sCalendar = sCalendar.getInstance();
-        today = sCalendar.getInstance();
+            sCalendar = getInstance(sCalendar);
+        today = getInstance(mCalendar);
+    }
+
+    private Calendar getInstance(Calendar calendar){
+        if(calendar instanceof HijraCalendar)
+            return HijraCalendar.getInstance();
+        if(calendar instanceof IslamicCalendar)
+            return IslamicCalendar.getInstance();
+        if(calendar instanceof UmmAlQuraCalendar)
+            return UmmAlQuraCalendar.getInstance();
+        return Calendar.getInstance();
+    }
+
+    private Calendar cloneCalendar(Calendar calendar){
+        if(calendar instanceof HijraCalendar)
+            return (HijraCalendar)calendar.clone();
+        if(calendar instanceof IslamicCalendar)
+            return (IslamicCalendar)calendar.clone();
+        if(calendar instanceof UmmAlQuraCalendar)
+            return (UmmAlQuraCalendar)calendar.clone();
+        return (Calendar)calendar.clone();
     }
 
     @Override
     public Object instantiateItem(ViewGroup collection, int position) {
-        final Calendar monthDate = (Calendar) today.clone();
+        final Calendar monthDate = cloneCalendar(today);
         monthDate.add(Calendar.MONTH, getCount()<getCenterPosition()?-(position+getCenterPosition()):(position-getCenterPosition()));
 
         monthGrid = new MonthGrid(mContext);
@@ -87,7 +108,16 @@ public class MonthPagerAdapter extends PagerAdapter {
 
             @Override
             public Object getItem(int position) {
-                return null;
+                Calendar calendar = cloneCalendar(monthDate);
+
+                calendar.set(Calendar.DAY_OF_MONTH, mainHelper.getDayAt(position));
+                if(!mainHelper.isWithinCurrentMonth(position))
+                    if(mainHelper.getDayAt(position) > 15)
+                        calendar.add(Calendar.MONTH, -1);
+                    else
+                        calendar.add(Calendar.MONTH, 1);
+
+                return calendar;
             }
 
             @Override
@@ -102,10 +132,28 @@ public class MonthPagerAdapter extends PagerAdapter {
 
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
+                //initiate 2nd calendar
+                if(position == 0 && sCalendar != null){
+                    if(sCalendar instanceof HijraCalendar)
+                        sCalendar = new HijraCalendar((Calendar)getItem(position));
+                    else if(sCalendar instanceof IslamicCalendar)
+                        sCalendar = new IslamicCalendar((Calendar)getItem(position));
+                    else if(sCalendar instanceof UmmAlQuraCalendar)
+                        sCalendar = new UmmAlQuraCalendar((Calendar)getItem(position));
+                    else
+                        sCalendar = ((Hijri)getItem(position)).toGregorianCalendar();
+                }else if(sCalendar != null){
+                    if(sCalendar instanceof Hijri)
+                        ((Hijri)sCalendar).addWithoutComputeFields(Calendar.DATE, 1);
+                    else
+                        sCalendar.add(Calendar.DATE, 1);
+                }
+
                 if(convertView==null)
                     convertView = LayoutInflater.from(mContext).inflate(R.layout.view_date, null);
                 ((TextView)convertView.findViewById(R.id.textView)).setText(mainHelper.getDayAt(position)+"");
-                ((TextView)convertView.findViewById(R.id.textView2)).setText(monthDate.get(Calendar.MONTH)+"");
+                if(sCalendar != null)
+                    ((TextView)convertView.findViewById(R.id.textView2)).setText(sCalendar.get(Calendar.MONTH)+"/"+sCalendar.get(Calendar.DATE));
 
                 int gHeight = monthGrid.getDaysGrid().getMeasuredHeight();//daysGrid.getMeasuredHeight();
                 int cHeight = gHeight / 6;
